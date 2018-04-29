@@ -31,28 +31,18 @@ rgb_lcd lcd;
 Process linux;
 
 void setup() {
+  pinMode(HALL_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT);
+
+  Bridge.begin();                 // Enable communication with Linux chip
+  FileSystem.begin();
   Serial.begin(9600);
 
   delay(1000);
-  Serial.println("Test");
-  pinMode(HALL_PIN, INPUT);
-  pinMode(BUTTON_PIN, INPUT);
-  Serial.println("Test2");
-
-  Bridge.begin();                 // Enable communication with Linux chip
-  Serial.println("Test3");
-  FileSystem.begin();
-
-  Serial.println("Test4");
-
-  delay(1000);
   Serial.println("Starting Up...");
-
   setupLCD();
-
   delay(2000);
 
-  clearLCD();
   displayStartScreen();
 }
 
@@ -63,6 +53,7 @@ void setupLCD() {
 }
 
 void displayStartScreen() {
+  clearLCD();
   lcd.print("To Start:");
   lcd.setCursor(0, 1);
   lcd.print("Click Button");
@@ -97,19 +88,13 @@ void checkButtonValue() {
 }
 
 void startSkateSession() {
-  Serial.println("SESSION START");
   isSessionActive = true;
 
   createLogFile();
 }
 
 void endSkateSession() {
-  Serial.println("SESSION END");
   isSessionActive = false;
-
-  // Log total distance
-  // Call up shell script
-  // Reset all values
 
   logTotalDistance();
   deleteLogFile();
@@ -130,11 +115,8 @@ void deleteLogFile() {
 void getHallReading() {
   sensorValue = analogRead(HALL_PIN);
 
-  Serial.println(sensorValue, DEC);
-
   if ((sensorValue > (norm + 5) || sensorValue < (norm - 5)) && !isTriggered) {
     isTriggered = true;
-    Serial.println(sensorValue,  DEC);
 
     clearLCD();
     addDistance();
@@ -142,31 +124,15 @@ void getHallReading() {
     displayDistance();
     displaySpeed();
     checkInterval();
-
-    Serial.println("----------------");
   }
 
   if ((sensorValue <= (norm + 1) && sensorValue >= (norm - 1)) && isTriggered) {
     isTriggered = false;
-    Serial.println(sensorValue,  DEC);
-    Serial.println("Off");
   }
 }
 
 void addDistance() {
   totalDistance += WHEEL_CIRCUM;
-
-  Serial.print("Distance: ");
-  Serial.print(totalDistance);              // Millimeters
-  Serial.println(" mm");
-
-  Serial.print("Distance: ");
-  Serial.print(totalDistance / 1000);       // Meters
-  Serial.println(" m");
-
-  Serial.print("Distance: ");
-  Serial.print((totalDistance / 1000000), 3);    // Kilometers
-  Serial.println(" km");
 }
 
     /*  Calculate speed of longboard in Kilometers Per Hour   */
@@ -188,10 +154,6 @@ void displayDistance() {
 }
 
 void displaySpeed() {
-  Serial.print("Speed: ");
-  Serial.print(curSpeed);
-  Serial.println(" KPH");
-
   lcd.setCursor(0, 1);    // Row (line) 2
   lcd.print("Speed: ");
   lcd.print(curSpeed);
@@ -206,7 +168,7 @@ void checkInterval() {
   curIntervalTotalSpeed += curSpeed;
   curIntervalTotalRevs++;
 
-  if (now() % 2 == 0) {       // Every *interval* seconds
+  if (now() % TIME_INTERVAL == 0) {       // Every *interval* seconds
     double avgSpeed = curIntervalTotalSpeed / curIntervalTotalRevs;     // Get average speed
 
     curIntervalTotalSpeed = 0;    // Reset values for next interval
