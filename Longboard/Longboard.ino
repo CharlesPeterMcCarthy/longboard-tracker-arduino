@@ -8,7 +8,7 @@ const double WHEEL_CIRCUM = 235.6194;   // Circumference of the 75mm (diameter) 
 const byte HALL_PIN = A0;
 const byte BUTTON_PIN = 8;
 const byte TIME_INTERVAL = 2;            // Seconds between data log
-char* TEXT_FILE_URL = "/mnt/sd/longboard_project/speed_logs.txt";
+char* TEXT_FILE_URL = "/mnt/sd/longboard_project/speeds.txt";         // Text file containing speeds logs
 
 bool isSessionActive = false;           // Flag for active skate session
 byte curBtnVal = 0;
