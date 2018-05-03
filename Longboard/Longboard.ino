@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <Time.h>
 #include <TimeLib.h>
 #include <FileIO.h>
@@ -5,10 +6,10 @@
 #include <Process.h>
 
 const double WHEEL_CIRCUM = 235.6194;   // Circumference of the 75mm (diameter) longboard wheel in (mm)
-const byte HALL_PIN = A0;
+const byte HALL_PIN = A1;
 const byte BUTTON_PIN = 8;
 const byte TIME_INTERVAL = 2;            // Seconds between data log
-char* TEXT_FILE_URL = "/mnt/sd/longboard_project/speeds.txt";         // Text file containing speeds logs
+char* TEXT_FILE_URL = "speeds.txt";
 
 bool isSessionActive = false;           // Flag for active skate session
 byte curBtnVal = 0;
@@ -23,26 +24,25 @@ double curIntervalTotalSpeed = 0;
 double curIntervalTotalRevs = 0;
 
 int sensorValue =  0;
-int norm = 525;                         // Normal magnetic reading
+int norm = 524;                         // Normal magnetic reading
 bool isTriggered = false;
 
 time_t time;
 rgb_lcd lcd;
 Process linux;
+StaticJsonBuffer<200> jsonBuffer;
 
 void setup() {
+  Serial.begin(9600);
+  Bridge.begin();                 // Enable communication with Linux chip
+  FileSystem.begin();
+
+  delay(1000);
   pinMode(HALL_PIN, INPUT);
   pinMode(BUTTON_PIN, INPUT);
 
-  Bridge.begin();                 // Enable communication with Linux chip
-  FileSystem.begin();
-  Serial.begin(9600);
-
-  delay(1000);
-  Serial.println("Starting Up...");
   setupLCD();
-  delay(2000);
-
+  clearLCD();
   displayStartScreen();
 }
 
@@ -50,10 +50,10 @@ void setupLCD() {
   lcd.begin(16,2);                // 2 rows, 16 columns
   lcd.setRGB(24, 167, 219);       // Set blue background
   lcd.print("Starting Up...");
+  delay(2000);
 }
 
 void displayStartScreen() {
-  clearLCD();
   lcd.print("To Start:");
   lcd.setCursor(0, 1);
   lcd.print("Click Button");
@@ -90,26 +90,19 @@ void checkButtonValue() {
 void startSkateSession() {
   isSessionActive = true;
 
-  createLogFile();
+  emptyLogFile();
 }
 
 void endSkateSession() {
   isSessionActive = false;
 
   logTotalDistance();
-  deleteLogFile();
   sendDataToAPI();
   resetValues();
 }
 
-void createLogFile() {
-  File dataFile = FileSystem.open(TEXT_FILE_URL, FILE_APPEND);
-}
-
-void deleteLogFile() {
-  linux.begin("rm");
-  linux.addParameter(TEXT_FILE_URL);
-  linux.run();
+void emptyLogFile() {
+  linux.runShellCommand("echo -n > speeds.txt");
 }
 
 void getHallReading() {
@@ -124,6 +117,8 @@ void getHallReading() {
     displayDistance();
     displaySpeed();
     checkInterval();
+
+    Serial.println("----------------");
   }
 
   if ((sensorValue <= (norm + 1) && sensorValue >= (norm - 1)) && isTriggered) {
@@ -168,7 +163,7 @@ void checkInterval() {
   curIntervalTotalSpeed += curSpeed;
   curIntervalTotalRevs++;
 
-  if (now() % TIME_INTERVAL == 0) {       // Every *interval* seconds
+  if (now() % 2 == 0) {       // Every *interval* seconds
     double avgSpeed = curIntervalTotalSpeed / curIntervalTotalRevs;     // Get average speed
 
     curIntervalTotalSpeed = 0;    // Reset values for next interval
@@ -182,7 +177,7 @@ void logSpeed(double avgSpeed) {
   File dataFile = FileSystem.open(TEXT_FILE_URL, FILE_APPEND);    // Open data log file
 
   if (dataFile) {                                               // If the file is available, write to it
-    dataFile.println(avgSpeed);                                 // Save average speed
+    dataFile.println(avgSpeed);                              // Save average speed
   } else {
     Serial.println("Error Opening Data File!");
   }
@@ -197,8 +192,80 @@ void logTotalDistance() {
 }
 
 void sendDataToAPI() {
-  // Call shell script
-  // runShellCommandAsynchronously() -- Not needed?
+  String response = "";
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Sending Data");
+  lcd.setCursor(0, 1);
+  lcd.print("To API...");
+
+  linux.runShellCommand("ash send_speeds.sh");    // Run ash (not bash)
+
+  while (linux.running());          // Wait for script to run
+  while (linux.available()) {       // Get response
+    response += linux.readString();
+  }
+
+  Serial.println(response);
+  Serial.flush();
+
+  JsonObject& json = ChangeToJSON(response);
+  PrintResponseData(json);
+}
+
+JsonObject& ChangeToJSON(String st) {
+  Serial.println(st);
+  JsonObject& json = jsonBuffer.parseObject(st);
+
+  return json;
+}
+
+void PrintResponseData(JsonObject& response) {
+  String sessionID = response["sessionID"];
+  String sessionLength = response["sessionLength"];
+  String avgSpeed = response["averageSpeed"];
+  String highSpeed = response["highestSpeed"];
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Session #");
+  lcd.print(sessionID);
+
+  delay(3000);
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Total Time:");
+  lcd.setCursor(0, 1);
+  lcd.print(sessionLength);
+  lcd.print(" Seconds");
+
+  delay(3000);
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Average Speed:");
+  lcd.setCursor(0, 1);
+  lcd.print(avgSpeed);
+  lcd.print(" KM/H");
+
+  delay(3000);
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Highest Speed:");
+  lcd.setCursor(0, 1);
+  lcd.print(highSpeed);
+  lcd.print(" KM/H");
+
+  delay(3000);
+
+  clearLCD();
+  lcd.setCursor(0, 0);
+  lcd.print("Click Button");
+  lcd.setCursor(0, 1);
+  lcd.print("To Go Again!");
 }
 
     // Reset all session values eg. Distance, current speed, etc.
