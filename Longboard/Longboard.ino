@@ -20,6 +20,8 @@ long curRevTime;
 double curSpeed;
 double totalDistance = 0;               // Initial value
 
+long lastLogTime = 0;
+
 double curIntervalTotalSpeed = 0;
 double curIntervalTotalRevs = 0;
 
@@ -163,12 +165,15 @@ void checkInterval() {
   curIntervalTotalSpeed += curSpeed;
   curIntervalTotalRevs++;
 
-  if (now() % 2 == 0) {       // Every *interval* seconds
+  long curTime = now();
+
+  if (lastLogTime != curTime && curTime % 2 == 0) {       // Every *interval* seconds
     double avgSpeed = curIntervalTotalSpeed / curIntervalTotalRevs;     // Get average speed
 
     curIntervalTotalSpeed = 0;    // Reset values for next interval
     curIntervalTotalRevs = 0;
-
+    lastLogTime = curTime;
+    
     logSpeed(avgSpeed);
   }
 }
