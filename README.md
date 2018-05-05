@@ -1,6 +1,8 @@
 # longboard_arduino
 C++ (Arduino) Program to monitor longboard/skateboard stats (distance, speed, etc.)
 
+[Project Demo YouTube Video](https://www.youtube.com/watch?v=q_IGEHvx30A)
+
 ![Longboard Project Image 1](images/img1.jpg?raw=true "Longboard Project Image 1")
 
 ## How It Works
