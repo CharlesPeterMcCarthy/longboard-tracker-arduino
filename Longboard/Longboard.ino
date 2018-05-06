@@ -5,7 +5,7 @@
 #include <rgb_lcd.h>
 #include <Process.h>
 
-const double WHEEL_CIRCUM = 235.6194;   // Circumference of the 75mm (diameter) longboard wheel in (mm)
+const double WHEEL_CIRCUM = {{WHEEL_CIRCUMFERENCE}};   // Enter your longboard wheel circumference here
 const byte HALL_PIN = A1;
 const byte BUTTON_PIN = 8;
 const byte TIME_INTERVAL = 2;            // Seconds between data log
@@ -26,7 +26,7 @@ double curIntervalTotalSpeed = 0;
 double curIntervalTotalRevs = 0;
 
 int sensorValue =  0;
-int norm = 524;                         // Normal magnetic reading
+int magneticNorm = {{MAGNET_NORMAL}};         // Set this to the normal magnetic reading
 bool isTriggered = false;
 
 time_t time;
@@ -110,7 +110,7 @@ void emptyLogFile() {
 void getHallReading() {
   sensorValue = analogRead(HALL_PIN);
 
-  if ((sensorValue > (norm + 5) || sensorValue < (norm - 5)) && !isTriggered) {
+  if ((sensorValue > (magneticNorm + 5) || sensorValue < (magneticNorm - 5)) && !isTriggered) {
     isTriggered = true;
 
     clearLCD();
@@ -123,7 +123,7 @@ void getHallReading() {
     Serial.println("----------------");
   }
 
-  if ((sensorValue <= (norm + 1) && sensorValue >= (norm - 1)) && isTriggered) {
+  if ((sensorValue <= (magneticNorm + 1) && sensorValue >= (magneticNorm - 1)) && isTriggered) {
     isTriggered = false;
   }
 }
@@ -173,7 +173,7 @@ void checkInterval() {
     curIntervalTotalSpeed = 0;    // Reset values for next interval
     curIntervalTotalRevs = 0;
     lastLogTime = curTime;
-    
+
     logSpeed(avgSpeed);
   }
 }
